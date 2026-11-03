@@ -3,160 +3,127 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#f6f8fc" />
-  <meta name="description" content="Interactive HCI prototype comparing an AI assistant with and without visible memory controls." />
-  <title>AI Memory Control — A/B UI Prototype</title>
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="description" content="AI Memory Control — minimal full-screen A/B chat prototype." />
+  <title>AI Memory Control — A/B Chat</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="app.js" defer></script>
 </head>
 <body>
-  <div class="site-wrap">
-    <header class="study-header">
-      <div class="branding">
-        <div class="brand-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="5"/><path d="M8 12h8M12 8v8"/></svg>
+  <main class="assistant-app" aria-label="AI assistant A/B prototype">
+    <header class="app-header">
+      <div class="app-logo">
+        <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Open chat history" aria-expanded="false" title="Chat history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div class="assistant-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3.5 13.8 9l5.7 2-5.7 2-1.8 5.5L10.2 13l-5.7-2 5.7-2L12 3.5Z"/><path d="m19 16 .65 1.85L21.5 18.5l-1.85.65L19 21l-.65-1.85-1.85-.65 1.85-.65L19 16Z"/></svg>
         </div>
-        <div>
-          <div class="eyebrow">CS 5340 · GROUP PROJECT</div>
-          <h1>AI Memory Control <span class="title-muted">/ UI Prototype</span></h1>
+        <div class="app-title-group">
+          <h1>AI Assistant</h1>
+          <p id="assistantSubtitle">Your personal AI helper</p>
         </div>
       </div>
-      <div class="top-actions">
-        <div class="mode-controls">
-          <label for="aiMode">Response mode</label>
-          <select id="aiMode" aria-label="AI response mode">
-            <option value="mock">Mock AI</option>
-            <option value="gemini">Real Gemini API</option>
-          </select>
-          <span id="apiStatus" class="api-status" aria-live="polite">Checking server…</span>
+      <div class="app-actions">
+        <button type="button" class="button button-tint" id="memoryNav" hidden>Manage Memory</button>
+        <div class="app-toolbar" aria-label="AI response controls">
+          <div class="mode-controls">
+            <label for="aiMode">Response mode</label>
+            <select id="aiMode" aria-label="AI response mode">
+              <option value="mock">Mock AI</option>
+              <option value="gemini">Gemini API</option>
+            </select>
+            <span id="apiStatus" class="api-status" aria-live="polite">Checking server…</span>
+          </div>
+
         </div>
-        <button class="button button-outline reset-button" id="resetDemo" type="button" title="Restore the example conversation and memory items">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a9 9 0 1 1 2.8 6.5"/><path d="M3 4v7h7"/></svg>
-          Reset demo
-        </button>
+        <div class="settings-menu-wrap">
+          <button type="button" id="settingsMenuToggle" class="settings-menu-toggle" aria-label="Open settings menu" title="Versions and local data" aria-expanded="false" aria-haspopup="true" aria-controls="settingsMenu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <div id="settingsMenu" class="settings-menu" aria-label="Version and data settings" hidden>
+            <div class="settings-menu-heading">Choose version</div>
+            <button type="button" id="menuVersionA" class="settings-menu-item is-selected" aria-pressed="true">
+              <span class="version-icon">A</span>
+              <span class="menu-item-copy"><strong>Version A</strong><small>Hidden memory</small></span>
+              <span class="settings-check" aria-hidden="true">✓</span>
+            </button>
+            <button type="button" id="menuVersionB" class="settings-menu-item" aria-pressed="false">
+              <span class="version-icon">B</span>
+              <span class="menu-item-copy"><strong>Version B</strong><small>Editable memory</small></span>
+              <span class="settings-check" aria-hidden="true">✓</span>
+            </button>
+            <div class="settings-menu-divider"></div>
+            <button type="button" id="clearAllData" class="settings-menu-item settings-menu-danger">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+              <span class="menu-item-copy"><strong>Clear all local data</strong><small>Both versions · this browser</small></span>
+            </button>
+          </div>
+        </div>
       </div>
     </header>
 
-    <section class="condition-bar" aria-label="Prototype version switcher">
-      <div class="condition-text">
-        <span class="label-overline">EXPERIMENT CONDITION</span>
-        <div class="condition-heading">Choose a version to preview</div>
-        <p id="conditionDescription">Version A: the assistant remembers preferences, but memory controls are hidden.</p>
+    <div id="sidebarScrim" class="sidebar-scrim" hidden></div>
+    <div class="workspace">
+      <aside id="chatSidebar" class="chat-sidebar" aria-label="Chat history">
+        <div class="sidebar-top">
+          <div class="sidebar-heading">
+            <span>Chats</span>
+            <button type="button" id="sidebarClose" class="sidebar-close" aria-label="Close chat history" title="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+          </div>
+          <button type="button" id="newChat" class="new-chat-button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-6"/><path d="M16 4h5M18.5 1.5v5"/></svg>
+            New chat
+          </button>
+        </div>
+        <div class="sidebar-history">
+          <p id="historyCaption" class="history-caption">Version A · Chat history</p>
+          <nav id="chatHistory" class="history-list" aria-label="Previous conversations"></nav>
+        </div>
+        <div class="sidebar-foot">Chats and memories stay in this browser</div>
+      </aside>
+      <div class="content-area">
+    <section id="chatView" class="app-view chat-view" aria-label="Chat interface">
+      <div id="chatScroll" class="chat-scroll" role="log" aria-live="polite" aria-relevant="additions text">
+        <div id="messages" class="messages"></div>
       </div>
-      <div class="version-switch" role="group" aria-label="Select prototype version">
-        <button id="versionA" type="button" class="version-option is-active" aria-pressed="true">
-          <span class="version-letter">A</span>
-          <span class="version-copy"><strong>Version A</strong><small>Hidden Memory</small></span>
-        </button>
-        <button id="versionB" type="button" class="version-option" aria-pressed="false">
-          <span class="version-letter">B</span>
-          <span class="version-copy"><strong>Version B</strong><small>Manage Memory</small></span>
-        </button>
+      <div class="chat-footer">
+        <form id="chatForm" class="chat-form">
+          <label class="sr-only" for="messageInput">Message AI Assistant</label>
+          <input id="messageInput" type="text" maxlength="300" autocomplete="off" placeholder="Message AI Assistant..." required />
+          <button id="sendMessage" type="submit" class="send-button" aria-label="Send message" title="Send message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7M12 5v14"/></svg>
+          </button>
+        </form>
       </div>
     </section>
 
-    <main class="workspace">
-      <div class="prototype-column">
-        <div class="preview-caption">
-          <span class="preview-led" aria-hidden="true"></span>
-          <span>LIVE PROTOTYPE</span>
-          <span class="preview-state" id="previewState">VERSION A · CHAT</span>
+    <section id="memoryView" class="app-view memory-view" aria-label="Manage memory interface" hidden>
+      <div class="memory-content">
+        <div class="memory-back-row">
+          <button type="button" class="memory-back-button" id="backToChat" aria-label="Back to chat">← Back to chat</button>
         </div>
-
-        <section class="assistant-app" aria-label="Interactive AI assistant prototype">
-          <header class="app-header">
-            <div class="app-logo">
-              <div class="assistant-mark" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3.5 13.8 9l5.7 2-5.7 2-1.8 5.5L10.2 13l-5.7-2 5.7-2L12 3.5Z"/><path d="m19 16 .65 1.85L21.5 18.5l-1.85.65L19 21l-.65-1.85-1.85-.65 1.85-.65L19 16Z"/></svg>
-              </div>
-              <div class="app-title-group"><h2>AI Assistant</h2><p>Your personal AI helper</p></div>
-            </div>
-            <button type="button" class="button button-tint" id="memoryNav" hidden>Manage Memory <span aria-hidden="true">↗</span></button>
-            <button type="button" class="button button-tint" id="backToChat" hidden>← Back to Chat</button>
-          </header>
-
-          <section id="chatView" class="app-view chat-view" aria-label="Chat interface">
-            <div class="chat-scroll" id="chatScroll" role="log" aria-live="polite" aria-relevant="additions text">
-              <div id="messages" class="messages"></div>
-            </div>
-            <div class="chat-footer">
-              <div class="suggestions" aria-label="Suggested prompts">
-                <button type="button" class="suggestion" data-prompt="Can you recommend a drink for me?">Recommend a drink</button>
-                <button type="button" class="suggestion" data-prompt="Can you suggest a study tip?">Study tip</button>
-                <button type="button" class="suggestion" data-prompt="What do you remember about me?">What do you remember?</button>
-              </div>
-              <form id="chatForm" class="chat-form">
-                <label class="sr-only" for="messageInput">Message AI Assistant</label>
-                <input id="messageInput" type="text" maxlength="300" autocomplete="off" placeholder="Message AI..." required />
-                <button id="sendMessage" type="submit" class="send-button" aria-label="Send message" title="Send message">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7M12 5v14"/></svg>
-                </button>
-              </form>
-              <div class="footer-hint">Mock uses preset replies. Gemini uses the server API and current memory list.</div>
-            </div>
-          </section>
-
-          <section id="memoryView" class="app-view memory-view" aria-label="Manage memory interface" hidden>
-            <div class="memory-intro">
-              <div>
-                <h3>Manage Memory</h3>
-                <p>View and manage what the AI remembers about you.</p>
-              </div>
-              <span class="memory-counter" id="memoryCount">3 memories</span>
-            </div>
-            <div class="memory-list" id="memoryList" aria-live="polite"></div>
-            <div class="memory-bottom">
-              <button class="button button-outline add-button" type="button" id="addMemory">
-                <span class="add-plus" aria-hidden="true">+</span> Add a memory
-              </button>
-              <p>Changes affect future replies. When using Gemini, removed memories are excluded from subsequent API requests.</p>
-            </div>
-          </section>
-        </section>
-      </div>
-
-      <aside class="guide-panel" aria-label="Prototype explanation and test tasks">
-        <div class="info-section">
-          <span class="label-overline">ABOUT THIS CONDITION</span>
-          <h3 id="guideTitle">Version A — Hidden Memory</h3>
-          <p id="guideDescription">The assistant uses personal preferences in its responses, but the interface does not give users a way to inspect or change stored memories.</p>
-        </div>
-        <div class="guide-divider"></div>
-        <div class="info-section">
-          <span class="label-overline">SUGGESTED TEST TASKS</span>
-          <ol id="taskList" class="task-list">
-            <li>Read the assistant's drink recommendation.</li>
-            <li>Try to find where the assistant stores preferences.</li>
-            <li>Try asking what the assistant remembers.</li>
-          </ol>
-        </div>
-        <div class="guide-divider"></div>
-        <div class="info-section">
-          <span class="label-overline">FOR YOUR HCI STUDY</span>
-          <div class="study-tip">
-            <svg class="tip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
-            <p>Both versions begin with the same conversation and memories. Use <b>Reset demo</b> before each new participant.</p>
+        <div class="memory-intro">
+          <div>
+            <h2>Manage Memory</h2>
+            <p>View and manage what the AI remembers about you.</p>
           </div>
+          <span class="memory-counter" id="memoryCount">3 memories</span>
         </div>
-      </aside>
-    </main>
-    <footer class="site-footer"><span>AI Memory Control · HCI interactive prototype</span><span>Made for comparative UI testing · 2026</span></footer>
-  </div>
-
-  <!-- Opened by clicking a memory source badge beneath a Version B reply. -->
-  <div id="quickEditOverlay" class="modal-overlay" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="quickEditTitle" aria-describedby="quickEditDescription">
-      <div class="edit-icon" aria-hidden="true">✎</div>
-      <h3 id="quickEditTitle">Edit referenced memory</h3>
-      <p id="quickEditDescription">Update the memory used by this answer. Changes will affect future replies, not the message already shown.</p>
-      <label class="quick-edit-label" for="quickEditInput">Saved memory</label>
-      <input id="quickEditInput" class="quick-edit-input" type="text" maxlength="150" autocomplete="off" />
-      <div class="modal-actions">
-        <button type="button" class="button button-outline" id="cancelQuickEdit">Cancel</button>
-        <button type="button" class="button button-primary" id="saveQuickEdit">Save changes</button>
+        <label class="auto-memory-setting" for="autoMemoryToggle">
+          <span class="auto-memory-setting-copy"><strong>Automatically summarize memories</strong><small>Learn lasting preferences from your chats. You can edit or delete them below.</small></span>
+          <input type="checkbox" id="autoMemoryToggle" checked aria-label="Automatically summarize memories from chat" />
+        </label>
+        <div class="memory-list" id="memoryList" aria-live="polite"></div>
+        <div class="memory-bottom">
+          <button class="button button-outline add-button" type="button" id="addMemory"><span aria-hidden="true">+</span> Add a memory</button>
+          <p>New memories are saved locally and affect future replies. Review AI-generated memories for accuracy.</p>
+        </div>
+      </div>
+    </section>
       </div>
     </div>
-  </div>
+  </main>
 
   <div id="deleteOverlay" class="modal-overlay" hidden>
     <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="deleteTitle" aria-describedby="deleteText">
@@ -169,6 +136,21 @@
       <div class="modal-actions">
         <button type="button" class="button button-outline" id="cancelDelete">Cancel</button>
         <button type="button" class="button button-danger" id="confirmDelete">Delete memory</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="clearAllOverlay" class="modal-overlay" hidden>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="clearAllTitle" aria-describedby="clearAllText">
+      <div class="delete-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+      </div>
+      <h3 id="clearAllTitle">Clear all local data?</h3>
+      <p id="clearAllText">This permanently removes the saved chats and memories for <strong>both Version A and Version B</strong> in this browser. Other browsers or devices are not affected.</p>
+      <div class="clear-summary" id="clearAllSummary"></div>
+      <div class="modal-actions">
+        <button type="button" class="button button-outline" id="cancelClearAll">Cancel</button>
+        <button type="button" class="button button-danger" id="confirmClearAll">Clear everything</button>
       </div>
     </div>
   </div>

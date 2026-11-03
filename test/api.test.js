@@ -33,7 +33,7 @@ test('Gemini proxy preserves A/B isolation and keeps API secret server-side', as
     captured.push({ path: req.url, key: req.headers['x-goog-api-key'], body: JSON.parse(source) });
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
-      candidates: [{ content: { role: 'model', parts: [{ text: JSON.stringify({ reply: 'An iced latte would be a refreshing choice.', usedMemoryIds: [1, 2, 999, 1] }) }] }, finishReason: 'STOP' }],
+      candidates: [{ content: { role: 'model', parts: [{ text: JSON.stringify({ reply: 'An iced latte would be a refreshing choice.', usedMemoryIds: [1, 2, 999, 1], memoryUpdates: [{action:'add', memoryId:0, text:'User prefers jasmine tea.'},{action:'update',memoryId:999,text:'Unknown memory.'}] }) }] }, finishReason: 'STOP' }],
       usageMetadata: { promptTokenCount: 35, candidatesTokenCount: 9, totalTokenCount: 44 },
     }));
   });
@@ -61,7 +61,12 @@ test('Gemini proxy preserves A/B isolation and keeps API secret server-side', as
 
   const html = await (await fetch(base)).text();
   const js = await (await fetch(`${base}/app.js`)).text();
-  assert.match(html, /Real Gemini API/);
+  assert.match(html, /id="settingsMenuToggle"/);
+  assert.doesNotMatch(html, /guide-panel|condition-bar|study-header/);
+  assert.match(html, /id="menuVersionA"/);
+  assert.match(html, /id="menuVersionB"/);
+  assert.match(html, /id="clearAllData"/);
+  assert.doesNotMatch(html, /id="resetDemo"/);
   assert.doesNotMatch(`${html}${js}`, /test-only-do-not-share/);
   assert.equal((await fetch(`${base}/.env`)).status, 404);
   assert.equal((await fetch(`${base}/server.js`)).status, 404);
@@ -73,7 +78,7 @@ test('Gemini proxy preserves A/B isolation and keeps API secret server-side', as
     return { status: response.status, json: await response.json() };
   };
 
-  const a = await post({ version: 'A', message: 'Recommend a drink', memories: ['User hates coffee.'] });
+  const a = await post({ version: 'A', message: 'Recommend a drink', memories: [{ id: 1, text: 'User likes coffee.' }, { id: 2, text: 'User prefers cold drinks.' }] });
   assert.equal(a.status, 200);
   assert.equal(a.json.reply, 'An iced latte would be a refreshing choice.');
   assert.deepEqual(a.json.usedMemoryIds, []); // Version A source IDs stay hidden
@@ -81,11 +86,12 @@ test('Gemini proxy preserves A/B isolation and keeps API secret server-side', as
   assert.equal(captured[0].path, '/v1beta/models/gemini-3.5-flash-lite:generateContent');
   assert.match(captured[0].body.systemInstruction.parts[0].text, /User likes coffee\./);
   assert.match(captured[0].body.systemInstruction.parts[0].text, /Do NOT preface normal answers/);
-  assert.doesNotMatch(captured[0].body.systemInstruction.parts[0].text, /User hates coffee\./);
+  assert.match(captured[0].body.systemInstruction.parts[0].text, /User prefers cold drinks\./);
   assert.deepEqual(captured[0].body.contents, [{ role: 'user', parts: [{ text: 'Recommend a drink' }] }]);
-  assert.equal(captured[0].body.generationConfig.maxOutputTokens, 768);
+  assert.equal(captured[0].body.generationConfig.maxOutputTokens, 1024);
   assert.equal(captured[0].body.generationConfig.responseMimeType, 'application/json');
-  assert.deepEqual(captured[0].body.generationConfig.responseSchema.required, ['reply','usedMemoryIds']);
+  assert.deepEqual(captured[0].body.generationConfig.responseSchema.required, ['reply','usedMemoryIds','memoryUpdates']);
+  assert.deepEqual(a.json.memoryUpdates, [{action:'add',memoryId:0,text:'User prefers jasmine tea.'}]);
 
   const b = await post({ version: 'B', message: 'Suggest something', memories: [{ id: 1, text: 'User likes tea.' }, { id: 2, text: 'User prefers hot drinks.' }] });
   assert.deepEqual(b.json.usedMemoryIds, [1, 2]); // rejects unknown / duplicate source IDs
@@ -94,11 +100,22 @@ test('Gemini proxy preserves A/B isolation and keeps API secret server-side', as
   assert.doesNotMatch(captured[1].body.systemInstruction.parts[0].text, /User likes coffee\./);
   assert.match(captured[1].body.systemInstruction.parts[0].text, /ID 1: User likes tea\./);
 
+  const disabled = await post({ version:'B', message:'I like tea', memories:[], autoSave:false });
+  assert.deepEqual(disabled.json.memoryUpdates, []);
+  assert.match(captured[2].body.systemInstruction.parts[0].text, /AUTO-SAVE: disabled/);
+  assert.deepEqual(captured[2].body.generationConfig.responseSchema.properties.memoryUpdates.items.required, ['action','memoryId','text']);
+
   const removed = await post({ version: 'B', message: 'What do you remember?', memories: [] });
   assert.equal(removed.status, 200);
   assert.deepEqual(removed.json.usedMemoryIds, []);
-  assert.match(captured[2].body.systemInstruction.parts[0].text, /\(none\)/);
-  assert.doesNotMatch(captured[2].body.systemInstruction.parts[0].text, /User likes coffee\./);
+  assert.match(captured[3].body.systemInstruction.parts[0].text, /\(none\)/);
+  assert.doesNotMatch(captured[3].body.systemInstruction.parts[0].text, /User likes coffee\./);
+
+  const aCleared = await post({ version: 'A', message: 'What is my preference?', memories: [] });
+  assert.equal(aCleared.status, 200);
+  assert.deepEqual(aCleared.json.usedMemoryIds, []);
+  assert.match(captured[4].body.systemInstruction.parts[0].text, /\(none\)/);
+  assert.doesNotMatch(captured[4].body.systemInstruction.parts[0].text, /User likes coffee\./);
 
   assert.equal((await post({ version: 'B', message: '', memories: [] })).status, 400);
   assert.equal((await post({ version: 'B', message: 'hello', memories: [{ id: 1, text: 'x'.repeat(151) }] })).status, 400);

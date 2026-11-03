@@ -1,102 +1,51 @@
-# AI Memory Control — A/B UI + Gemini API
+# AI Memory Control — Gemini v2.0 (Automatic Memory Summarization)
 
-A CS5340 HCI interactive prototype: **Version A** hides remembered preferences; **Version B** shows an editable memory management interface. Both start with identical memories. Includes deterministic **Mock AI** and **Real Gemini API** modes, with **click-to-edit memory source chips** beneath Version B replies.
+A lightweight CS5340 HCI A/B web prototype built with **plain HTML, CSS, JavaScript, and Node.js**. No npm packages or database are required. Both versions use Google Gemini to answer questions and automatically summarize suitable user-stated information into durable browser-local memory.
 
-## Quick start in VS Code (Windows)
+## Start in VS Code
 
-1. Install **Node.js 20.6+**. Open the `AI_Memory_AB_Gemini` folder in VS Code.
-2. Get a Gemini API key at <https://aistudio.google.com/api-keys>.
-3. In the VS Code **PowerShell** terminal, run:
+1. Install **Node.js 20.6+**.
+2. Copy `.env.example` to `.env` and paste your Google AI Studio key into `GEMINI_API_KEY`.
+3. Run `npm.cmd start` in PowerShell (or `npm start` in Command Prompt).
+4. Open `http://127.0.0.1:3000`.
 
-   ```powershell
-   Copy-Item .env.example .env
-   ```
+For offline demo mode, choose **Mock AI** in Response mode. Mock AI uses a deliberately small set of literal first-person patterns to simulate auto-saving (for example, `I like green tea.`); true semantic summarization is provided by Gemini.
 
-4. Open `.env`, replace `your_api_key_here` with your entire Gemini API key. Keep it private.
-5. Start the local website:
+## Automatic memory summarization
 
-   ```powershell
-   npm.cmd start
-   ```
+- After **each successful Gemini reply**, the **same API request** also returns structured `memoryUpdates` suggestions. There is **no additional model request** per message.
+- The model is instructed to remember only **stable, explicitly stated, non-sensitive user facts/preferences**, and to ignore casual questions, temporary instructions, and private secrets.
+- It proposes **add / update / delete** operations. `delete` is permitted only when the current user message explicitly requests that the matching memory be forgotten. Suggestions are validated by the server **and again in the browser**. There is basic exact-string de-duplication and a maximum of 25 memories per version. Semantic extraction may still make mistakes; users should review entries.
+- A saved memory is marked **✦ Auto-saved from chat** in the Version B dashboard. Version B also has an **Automatically summarize memories** on/off switch, stored across reloads. Version A learns automatically but intentionally hides memory management controls, preserving the HCI A/B UI comparison.
+- Newly saved memories are used on **subsequent** replies, not retroactively in the original response. Model-reported reply attribution remains available only in Version B.
+- Memory and chat history are saved in **this browser's `localStorage`**, separate for A and B. Other browsers/devices don't share them. Manual edits and deletes take effect in future prompts.
+- Previously deleted memory is **not re-extracted from older chat history**: only the **current** user message and currently saved memory list are sent to Gemini. If the user states the preference again, it may be saved again.
+- Use the top-right menu's **Clear all local data** to erase both versions' chats and saved memories in this browser. This does not erase information previously transmitted to the API provider.
 
-6. Open <http://127.0.0.1:3000>. When the API key is recognized, **Real Gemini API** is selected automatically. You can switch to **Mock AI** at any time.
+## Technical layout
 
-On macOS/Linux, use `cp .env.example .env` and `npm start` instead. **No `npm install` is needed**: this project uses only built-in Node.js APIs and browser JavaScript.
+- `index.html` — accessible full-window UI: chat sidebar, A/B menu, Memory Dashboard
+- `styles.css` — responsive styling
+- `app.js` — localStorage, chat actions, auto-memory operations and validation
+- `server.js` — Node.js HTTP server and Gemini proxy. Keeps `GEMINI_API_KEY` outside the browser.
+- `test/` — Node.js API regression tests and Playwright browser interaction tests
 
-If you see `API key not configured; Mock works`, check that `.env` exists beside `server.js`, the key is filled in, and you restarted Node with `Ctrl+C` then `npm.cmd start`.
+The Gemini proxy uses Google `generateContent` + a structured JSON schema requiring `reply`, `usedMemoryIds`, and `memoryUpdates`. See Google's [structured output documentation](https://ai.google.dev/gemini-api/docs/structured-output) for background. The model's `usedMemoryIds` are **self-reported** and are not a proven explanation of internal reasoning.
 
-## Configuration
+## Test and deployment
 
-Edit `.env` (not `.env.example`):
-
-```dotenv
-GEMINI_API_KEY=your_actual_google_ai_studio_key
-GEMINI_MODEL=gemini-3.5-flash-lite
-PORT=3000
+```bash
+npm test
 ```
 
-The default model is **`gemini-3.5-flash-lite`**. Model availability and free-tier quotas vary by project; check <https://ai.google.dev/gemini-api/docs/models> and <https://ai.google.dev/gemini-api/docs/pricing>. If your Google project cannot access that model, select a supported model in `.env` and restart the server.
+If Playwright / Chromium are installed, run:
 
-## Request flow
-
-```text
-Browser UI (index.html + app.js)
-    POST /api/chat  { message, version, memories }
-         |
-Node.js server (server.js; reads GEMINI_API_KEY from .env)
-    POST /v1beta/models/{model}:generateContent
-    x-goog-api-key: <server-side key>
-         |
-    Gemini API → JSON with natural reply + memory IDs
-         |
-Browser UI  { reply, usedMemoryIds }
+```bash
+python test/auto_memory_test.py
+python test/browser_storage_test.py
+python test/browser_reply_actions_test.py
 ```
 
-The browser **never receives** the Gemini API key. The server also restricts static file serving to public UI files, so `.env` and `server.js` cannot be fetched through its local web server.
+To deploy on Render: commit the source (but **never `.env`**) to GitHub. Configure a Render **Node Web Service** with start command **`node server.js`** and set environment variables `GEMINI_API_KEY`, `GEMINI_MODEL`, `HOST=0.0.0.0`. Render provides `PORT` automatically.
 
-### A/B experimental semantics
-
-- **A: Hidden Memory** — same seeded memories, no management interface; API server uses a fixed memory list even if someone tampers with browser state.
-- **B: Manage Memory** — memory entries are visible, editable, addable, and deletable. The next Gemini request includes only the current B memory list. Every memory is assigned a stable numeric ID for source linking.
-- **Same underlying AI** — both versions use identical model and prompting rules to isolate interface visibility/control.
-- **Version B attribution** — Relevant assistant replies display **Based on memory: [memory text]**. Click an individual chip to edit that memory in a pop-up, without leaving chat. The edit changes future responses; earlier reply text and citations are preserved as historical snapshots. Deleted citations become disabled.
-- **Version A attribution** — Version A deliberately hides memory-source chips and the edit dialog to preserve the hidden-memory comparison.
-- **Gemini structured response** — Gemini returns `{ reply, usedMemoryIds }`, and the backend validates IDs against the submitted current memory list. Attribution is **self-reported by the model**, not a definitive proof of which tokens or memories caused the response.
-- **Mock** — returns predictable, hard-coded example replies and source IDs; does not use tokens or require an API key.
-- **Real Gemini** — asks Gemini for a natural reply (without repeated “Since you…” preambles) and memory IDs; sends only the current question plus currently active memories; *does not send earlier chat turns*, so deleted memory cannot reappear indirectly from prior model responses. As a trade-off, multi-turn context is not supported.
-- **Persistence** — edits and chat are in memory in the current browser page; refresh and **Reset demo** restore starter memories. The app does **not** automatically extract new memories from chat.
-
-Free-tier API content may be used by Google to improve products; use **fictional participant memory data** in an HCI study, or review data processing requirements before collecting real information.
-
-## Troubleshooting
-
-| Problem | Fix |
-| --- | --- |
-| `npm.ps1 cannot be loaded` | Use `npm.cmd start` in PowerShell (no policy change needed). |
-| `API key not configured; Mock works` | Create `.env` in project root, paste entire Gemini key, restart. |
-| `Gemini API access denied` | Check the Google AI Studio project, key permissions, and model availability. |
-| `Gemini model not found` | Choose a model available in your Google AI Studio project. |
-| `Gemini free-tier rate limit / quota reached` | Check AI Studio quotas, wait, or switch to Mock. |
-| `Unexpected server reply` | Use `http://127.0.0.1:3000` instead of opening `index.html` or VS Code Live Server. |
-| Port 3000 occupied | In `.env` use `PORT=3001`, restart, and open `http://127.0.0.1:3001`. |
-
-## Project files
-
-```text
-AI_Memory_AB_Gemini/
-├── index.html             A/B and chat/memory UI
-├── styles.css             Layout and theme
-├── app.js                 Memory editing, mock mode, Gemini mode
-├── server.js              Local server and Gemini API proxy
-├── .env.example           Copy to .env and fill in your Gemini key
-├── .gitignore             Excludes .env
-├── package.json           npm start / npm test
-├── README.md              English instructions
-└── test/api.test.js       Local integration tests with mock upstream
-```
-
-Run tests with `npm.cmd test` on Windows (or `npm test` on macOS/Linux). The tests do **not** call real Google servers or consume your free API quota.
-
-## Deployment note
-
-This is a classroom/local prototype, *not* a public multi-user production backend. Before publishing it, add authentication, rate limits, usage controls, a proper per-participant memory store, HTTPS, and a privacy notice. Deploy the **Node server together with the frontend**; static-only GitHub Pages hosting cannot call `/api/chat`.
+**Public demo safety:** The included API endpoint is not authenticated or rate-limited. Add a password or server-side rate limiting before broadly publishing it. Automatic memory is a prototype: do not enter passwords, sensitive personal data, or real participant data without informed consent. The `localStorage` data is not encrypted, and sending prompts to a provider may have separate retention/data-use implications. API use may incur charges or limits.
