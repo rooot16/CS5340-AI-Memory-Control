@@ -92,7 +92,6 @@ AI_Memory_AB_Gemini/
 ├── .gitignore             Excludes .env
 ├── package.json           npm start / npm test
 ├── README.md              English instructions
-├── 快速开始_中文.md          Chinese instructions
 └── test/api.test.js       Local integration tests with mock upstream
 ```
 
