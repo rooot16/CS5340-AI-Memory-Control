@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f6f8fc" />
+  <meta name="description" content="Interactive HCI prototype comparing an AI assistant with and without visible memory controls." />
+  <title>AI Memory Control — A/B UI Prototype</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="site-wrap">
+    <header class="study-header">
+      <div class="branding">
+        <div class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="5"/><path d="M8 12h8M12 8v8"/></svg>
+        </div>
+        <div>
+          <div class="eyebrow">CS 5340 · GROUP PROJECT</div>
+          <h1>AI Memory Control <span class="title-muted">/ UI Prototype</span></h1>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div class="mode-controls">
+          <label for="aiMode">Response mode</label>
+          <select id="aiMode" aria-label="AI response mode">
+            <option value="mock">Mock AI</option>
+            <option value="gemini">Real Gemini API</option>
+          </select>
+          <span id="apiStatus" class="api-status" aria-live="polite">Checking server…</span>
+        </div>
+        <button class="button button-outline reset-button" id="resetDemo" type="button" title="Restore the example conversation and memory items">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a9 9 0 1 1 2.8 6.5"/><path d="M3 4v7h7"/></svg>
+          Reset demo
+        </button>
+      </div>
+    </header>
+
+    <section class="condition-bar" aria-label="Prototype version switcher">
+      <div class="condition-text">
+        <span class="label-overline">EXPERIMENT CONDITION</span>
+        <div class="condition-heading">Choose a version to preview</div>
+        <p id="conditionDescription">Version A: the assistant remembers preferences, but memory controls are hidden.</p>
+      </div>
+      <div class="version-switch" role="group" aria-label="Select prototype version">
+        <button id="versionA" type="button" class="version-option is-active" aria-pressed="true">
+          <span class="version-letter">A</span>
+          <span class="version-copy"><strong>Version A</strong><small>Hidden Memory</small></span>
+        </button>
+        <button id="versionB" type="button" class="version-option" aria-pressed="false">
+          <span class="version-letter">B</span>
+          <span class="version-copy"><strong>Version B</strong><small>Manage Memory</small></span>
+        </button>
+      </div>
+    </section>
+
+    <main class="workspace">
+      <div class="prototype-column">
+        <div class="preview-caption">
+          <span class="preview-led" aria-hidden="true"></span>
+          <span>LIVE PROTOTYPE</span>
+          <span class="preview-state" id="previewState">VERSION A · CHAT</span>
+        </div>
+
+        <section class="assistant-app" aria-label="Interactive AI assistant prototype">
+          <header class="app-header">
+            <div class="app-logo">
+              <div class="assistant-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3.5 13.8 9l5.7 2-5.7 2-1.8 5.5L10.2 13l-5.7-2 5.7-2L12 3.5Z"/><path d="m19 16 .65 1.85L21.5 18.5l-1.85.65L19 21l-.65-1.85-1.85-.65 1.85-.65L19 16Z"/></svg>
+              </div>
+              <div class="app-title-group"><h2>AI Assistant</h2><p>Your personal AI helper</p></div>
+            </div>
+            <button type="button" class="button button-tint" id="memoryNav" hidden>Manage Memory <span aria-hidden="true">↗</span></button>
+            <button type="button" class="button button-tint" id="backToChat" hidden>← Back to Chat</button>
+          </header>
+
+          <section id="chatView" class="app-view chat-view" aria-label="Chat interface">
+            <div class="chat-scroll" id="chatScroll" role="log" aria-live="polite" aria-relevant="additions text">
+              <div id="messages" class="messages"></div>
+            </div>
+            <div class="chat-footer">
+              <div class="suggestions" aria-label="Suggested prompts">
+                <button type="button" class="suggestion" data-prompt="Can you recommend a drink for me?">Recommend a drink</button>
+                <button type="button" class="suggestion" data-prompt="Can you suggest a study tip?">Study tip</button>
+                <button type="button" class="suggestion" data-prompt="What do you remember about me?">What do you remember?</button>
+              </div>
+              <form id="chatForm" class="chat-form">
+                <label class="sr-only" for="messageInput">Message AI Assistant</label>
+                <input id="messageInput" type="text" maxlength="300" autocomplete="off" placeholder="Message AI..." required />
+                <button id="sendMessage" type="submit" class="send-button" aria-label="Send message" title="Send message">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7M12 5v14"/></svg>
+                </button>
+              </form>
+              <div class="footer-hint">Mock uses preset replies. Gemini uses the server API and current memory list.</div>
+            </div>
+          </section>
+
+          <section id="memoryView" class="app-view memory-view" aria-label="Manage memory interface" hidden>
+            <div class="memory-intro">
+              <div>
+                <h3>Manage Memory</h3>
+                <p>View and manage what the AI remembers about you.</p>
+              </div>
+              <span class="memory-counter" id="memoryCount">3 memories</span>
+            </div>
+            <div class="memory-list" id="memoryList" aria-live="polite"></div>
+            <div class="memory-bottom">
+              <button class="button button-outline add-button" type="button" id="addMemory">
+                <span class="add-plus" aria-hidden="true">+</span> Add a memory
+              </button>
+              <p>Changes affect future replies. When using Gemini, removed memories are excluded from subsequent API requests.</p>
+            </div>
+          </section>
+        </section>
+      </div>
+
+      <aside class="guide-panel" aria-label="Prototype explanation and test tasks">
+        <div class="info-section">
+          <span class="label-overline">ABOUT THIS CONDITION</span>
+          <h3 id="guideTitle">Version A — Hidden Memory</h3>
+          <p id="guideDescription">The assistant uses personal preferences in its responses, but the interface does not give users a way to inspect or change stored memories.</p>
+        </div>
+        <div class="guide-divider"></div>
+        <div class="info-section">
+          <span class="label-overline">SUGGESTED TEST TASKS</span>
+          <ol id="taskList" class="task-list">
+            <li>Read the assistant's drink recommendation.</li>
+            <li>Try to find where the assistant stores preferences.</li>
+            <li>Try asking what the assistant remembers.</li>
+          </ol>
+        </div>
+        <div class="guide-divider"></div>
+        <div class="info-section">
+          <span class="label-overline">FOR YOUR HCI STUDY</span>
+          <div class="study-tip">
+            <svg class="tip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+            <p>Both versions begin with the same conversation and memories. Use <b>Reset demo</b> before each new participant.</p>
+          </div>
+        </div>
+      </aside>
+    </main>
+    <footer class="site-footer"><span>AI Memory Control · HCI interactive prototype</span><span>Made for comparative UI testing · 2026</span></footer>
+  </div>
+
+  <!-- Opened by clicking a memory source badge beneath a Version B reply. -->
+  <div id="quickEditOverlay" class="modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="quickEditTitle" aria-describedby="quickEditDescription">
+      <div class="edit-icon" aria-hidden="true">✎</div>
+      <h3 id="quickEditTitle">Edit referenced memory</h3>
+      <p id="quickEditDescription">Update the memory used by this answer. Changes will affect future replies, not the message already shown.</p>
+      <label class="quick-edit-label" for="quickEditInput">Saved memory</label>
+      <input id="quickEditInput" class="quick-edit-input" type="text" maxlength="150" autocomplete="off" />
+      <div class="modal-actions">
+        <button type="button" class="button button-outline" id="cancelQuickEdit">Cancel</button>
+        <button type="button" class="button button-primary" id="saveQuickEdit">Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="deleteOverlay" class="modal-overlay" hidden>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="deleteTitle" aria-describedby="deleteText">
+      <div class="delete-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+      </div>
+      <h3 id="deleteTitle">Delete this memory?</h3>
+      <p id="deleteText">Are you sure you want to delete this memory?</p>
+      <div class="delete-preview" id="deleteMemoryPreview"></div>
+      <div class="modal-actions">
+        <button type="button" class="button button-outline" id="cancelDelete">Cancel</button>
+        <button type="button" class="button button-danger" id="confirmDelete">Delete memory</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

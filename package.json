@@ -1,0 +1,14 @@
+{
+  "name": "ai-memory-control-ab-gemini",
+  "version": "1.2.0",
+  "private": true,
+  "description": "HCI A/B memory-control prototype with Gemini API and clickable memory-source attribution",
+  "scripts": {
+    "start": "node --env-file=.env server.js",
+    "dev": "node --watch --env-file=.env server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  }
+}
